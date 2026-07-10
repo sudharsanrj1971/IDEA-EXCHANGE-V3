@@ -1,8 +1,10 @@
 const User = require('../models/User.model');
 const jwt = require('jsonwebtoken');
+const axios = require('axios');
 const { success, error } = require('../utils/apiResponse');
 const { logSecurityEvent } = require('../utils/securityLogger');
 const { setCsrfCookie } = require('../middleware/csrf.middleware');
+const logger = require('../utils/logger');
 
 /**
  * Signs JWT Tokens.
@@ -118,4 +120,52 @@ exports.logout = (req, res) => {
 exports.getCsrfToken = (req, res) => {
   const token = setCsrfCookie(res);
   success(res, { csrfToken: token });
+};
+
+exports.getConfig = (req, res) => {
+  success(res, { googleClientId: process.env.OAUTH_GOOGLE_CLIENT_ID || '' });
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential } = req.body;
+    if (!credential) return error(res, 'Google credential token is required', 400);
+
+    const response = await axios.get(`https://oauth2.googleapis.com/tokeninfo?id_token=${credential}`);
+    const { email, name, picture } = response.data;
+
+    if (!email) return error(res, 'Invalid Google token', 400);
+
+    let user = await User.findOne({ institutionalEmail: email });
+    if (!user) {
+      // Create user if not exists
+      // Google sign-in doesn't have a password, so we generate a random one to satisfy model validation
+      const crypto = require('crypto');
+      const tempPassword = crypto.randomBytes(16).toString('hex');
+      user = await User.create({
+        name,
+        institutionalEmail: email,
+        password: tempPassword,
+        role: 'student', // Default role
+        isActive: true
+      });
+    }
+
+    if (user.isBanned) {
+      await logSecurityEvent('SYBIL_ATTEMPT', 'critical', user._id, req, { reason: 'Banned user Google login' });
+      return error(res, 'Account suspended for platform integrity violations', 403);
+    }
+
+    const tokens = signTokens(user._id);
+    setAuthCookies(res, tokens);
+    setCsrfCookie(res); // Regenerate CSRF on login
+
+    user.password = undefined;
+    await logSecurityEvent('LOGIN_SUCCESS', 'info', user._id, req, { method: 'google' });
+    
+    success(res, { user });
+  } catch (err) {
+    logger.error('Google login error:', err);
+    error(res, 'Google authentication failed', 500);
+  }
 };

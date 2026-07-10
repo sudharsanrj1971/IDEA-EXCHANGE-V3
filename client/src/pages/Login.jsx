@@ -4,6 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { authApi } from '../services/all.api';
 import { useAuthStore } from '../store/authStore';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
+import GoogleLoginButton from '../components/auth/GoogleLoginButton';
 
 export default function Login() {
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm();
@@ -79,6 +80,13 @@ export default function Login() {
               {isSubmitting ? <Loader2 size={20} className="animate-spin"/> : 'Sign In'}
             </button>
           </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <span className="w-1/5 border-b border-white/5 lg:w-1/4"></span>
+            <span className="text-xs text-center text-gray-500 uppercase">or</span>
+            <span className="w-1/5 border-b border-white/5 lg:w-1/4"></span>
+          </div>
+          <GoogleLoginButton />
 
           <div className="mt-8 text-center border-t border-white/5 pt-6">
             <p className="text-xs text-gray-500">

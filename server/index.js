@@ -22,8 +22,12 @@ const SOFT_REQUIRED = ['JWT_SECRET', 'REDIS_URL', 'GEMINI_API_KEY', 'OAUTH_GOOGL
 
 FIREBASE_REQUIRED.forEach(envVar => {
   if (!process.env[envVar]) {
-    logger.error(`[FATAL] Missing required Firebase env var: ${envVar}. Cannot start without Firestore.`);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production' && process.env.LOCAL_DEMO !== 'true') {
+      logger.error(`[FATAL] Missing required Firebase env var: ${envVar}. Cannot start without Firestore.`);
+      process.exit(1);
+    } else {
+      logger.warn(`[WARNING] Missing required Firebase env var: ${envVar} — Firebase features will be unavailable.`);
+    }
   }
 });
 

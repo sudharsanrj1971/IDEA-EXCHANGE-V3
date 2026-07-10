@@ -18,16 +18,27 @@ const initFirebase = () => {
     if (!FIREBASE_PROJECT_ID) missing.push('FIREBASE_PROJECT_ID');
     if (!FIREBASE_SERVICE_ACCOUNT_KEY) missing.push('FIREBASE_SERVICE_ACCOUNT_KEY');
     if (!FIREBASE_DATABASE_ID) missing.push('FIREBASE_DATABASE_ID');
-    logger.error(`[FATAL] Missing critical Firebase env vars: ${missing.join(', ')}`);
-    process.exit(1);
+    
+    if (process.env.NODE_ENV === 'production' && process.env.LOCAL_DEMO !== 'true') {
+      logger.error(`[FATAL] Missing critical Firebase env vars: ${missing.join(', ')}`);
+      process.exit(1);
+    } else {
+      logger.warn(`[WARNING] Missing critical Firebase env vars: ${missing.join(', ')} — skipping initialization.`);
+      return;
+    }
   }
 
   let serviceAccount;
   try {
     serviceAccount = JSON.parse(FIREBASE_SERVICE_ACCOUNT_KEY);
   } catch (err) {
-    logger.error(`[FATAL] FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON: ${err.message}`);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production' && process.env.LOCAL_DEMO !== 'true') {
+      logger.error(`[FATAL] FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON: ${err.message}`);
+      process.exit(1);
+    } else {
+      logger.warn(`[WARNING] FIREBASE_SERVICE_ACCOUNT_KEY is not valid JSON: ${err.message} — skipping initialization.`);
+      return;
+    }
   }
 
   try {
@@ -36,7 +47,6 @@ const initFirebase = () => {
       projectId: FIREBASE_PROJECT_ID,
     });
 
-    // Support named Firestore databases (not just "(default)")
     const dbId = FIREBASE_DATABASE_ID && FIREBASE_DATABASE_ID !== '(default)'
       ? FIREBASE_DATABASE_ID
       : undefined;
@@ -47,8 +57,12 @@ const initFirebase = () => {
       `[CORE] Firebase Admin SDK initialized. Project: ${FIREBASE_PROJECT_ID}, DB: ${FIREBASE_DATABASE_ID}`
     );
   } catch (error) {
-    logger.error(`[FATAL] Firebase Admin initialization failed: ${error.message}`);
-    process.exit(1);
+    if (process.env.NODE_ENV === 'production' && process.env.LOCAL_DEMO !== 'true') {
+      logger.error(`[FATAL] Firebase Admin initialization failed: ${error.message}`);
+      process.exit(1);
+    } else {
+      logger.warn(`[WARNING] Firebase Admin initialization failed: ${error.message} — running in degraded mode.`);
+    }
   }
 };
 

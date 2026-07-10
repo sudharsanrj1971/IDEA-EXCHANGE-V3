@@ -17,6 +17,8 @@ const validate = (req, res, next) => {
  * Public endpoint to fetch initial session-bound CSRF token.
  */
 router.get('/csrf-token', authController.getCsrfToken);
+router.get('/config', authController.getConfig);
+router.post('/google', authLimiter, authController.googleLogin);
 
 router.post('/register', 
   authLimiter,
